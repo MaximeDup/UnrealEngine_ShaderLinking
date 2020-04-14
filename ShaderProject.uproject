@@ -1,0 +1,14 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "{8E6F778F-4E9C-52D1-76E0-AB9FA31B5A70}",
+	"Category": "",
+	"CreatedBy":  "MaximeDUPART",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "ShaderProject",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

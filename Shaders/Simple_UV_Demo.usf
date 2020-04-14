@@ -1,0 +1,122 @@
+//You need at least one line to prevent error message in shader editor
+
+// Using ShaderEditor 
+//
+// "Window->ShaderCode-> HLSL Code"
+//
+// You will find
+//
+// CustomExpression1(FMaterialPixelParameters Parameters,MaterialFloat Library,MaterialFloat2 UV)
+//
+// We have access to the custom node input UV we added in shader
+//
+// As well as 'Parameters' which can give access to information like VertexColor, WorldNormal etc....
+//
+// For more detail FMaterialPixelParameters is defined in "Engine/Shaders/Private/MaterialTemplate.ush"
+//
+
+float2 fragCoord = ReturnUV_ForShaderToy(UV)*float2(ObjScale.x,ObjScale.y);
+float2 iResolution = float2(1.0,1.0)*float2(1.0,1.0/ObjScale.x);
+
+fragCoord = fragCoord*ObjScale.y/ObjScale.x;
+
+/////////////////////////////////////
+// From Created by inigo quilez - Shadertoy - https://www.shadertoy.com/view/3lsSzf
+
+// Created by inigo quilez - iq/2019
+// License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
+//
+//
+// An animation test - a happy and blobby creature jumping and
+// looking around. It gets off-model very often, but it looks
+// good enough I think.
+//
+// Making of and related math/shader/art explanations (6 hours
+// long): https://www.youtube.com/watch?v=Cfe5UQ-1L9Q
+//
+// Video capture: https://www.youtube.com/watch?v=s_UOFo2IULQ
+
+/////////////////////////////////////
+
+
+
+
+#if HW_PERFORMANCE==0
+#define AA 1
+#else
+#define AA 2  // Set AA to 1 if your machine is too slow
+#endif
+
+
+
+float4 fragColor;
+
+    float3 tot = float3(0.0,0.0,0.0);
+#if AA>1
+    for( int m=ZERO; m<AA; m++ )
+    for( int n=ZERO; n<AA; n++ )
+    {
+        // pixel coordinates
+        float2 o = float2(float(m),float(n)) / float(AA) - 0.5;
+        float2 p = (-iResolution.xy + 2.0*(fragCoord+o))/iResolution.y;
+        // time coordinate (motion blurred, shutter=0.5)
+        float d = 0.5*sin(fragCoord.x*147.0)*sin(fragCoord.y*131.0);
+        float time = iTime - 0.5*(1.0/24.0)*(float(m*AA+n)+d)/float(AA*AA-1);
+#else    
+        float2 p = (-iResolution.xy + 2.0*fragCoord)/iResolution.y;
+        float time = iTime;
+#endif
+        time += -2.6;
+        time *= 0.9;
+        
+        // camera	
+        float cl = sin(0.5*time);
+        float an = 1.57 + 0.7*sin(0.15*time);
+        float3  ta = float3( 0.0, 0.65, -0.6+time*1.0 - 0.4*cl);
+        float3  ro = ta + float3( 1.3*cos(an), -0.250, 1.3*sin(an) );
+        float ti = frac(time-0.15);
+        ti = 4.0*ti*(1.0-ti);        
+        ta.y += 0.15*ti*ti*(3.0-2.0*ti)*smoothstep(0.4,0.9,cl);
+        
+        // camera bounce
+        float t4 = abs(frac(time*0.5)-0.5)/0.5;
+        float bou = -1.0 + 2.0*t4;
+        ro += 0.06*sin(time*12.0+float3(0.0,2.0,4.0))*smoothstep( 0.85, 1.0, abs(bou) );
+
+        // camera-to-world rotation
+        float3x3 ca = setCamera( ro, ta, 0.0 );
+
+        // ray direction
+        float3 rd = mul(ca , normalize( float3(p.x,p.y,1.8) ));
+        
+        // render	
+        float3 col = render( ro, rd, time, iTime );
+
+        // color grading
+        col = col*float3(1.11,0.89,0.79);
+
+        // compress        
+        col = 1.35*col/(1.0+col);
+        
+        // gamma // Not needed - handled by Unreal Tonemapper
+        //col = pow( col, float3(0.4545,0.4545,0.4545) );
+
+        tot += col;
+#if AA>1
+    }
+    tot /= float(AA*AA);
+#endif
+
+    // s-surve    
+    tot = clamp(tot,0.0,1.0);
+    tot = tot*tot*(3.0-2.0*tot);
+
+    // vignetting        
+    float2 q = fragCoord/iResolution.xy;
+    tot *= 0.5 + 0.5*pow(16.0*q.x*q.y*(1.0-q.x)*(1.0-q.y),0.25);
+
+    // output    
+    fragColor = float4( tot, 1.0 );
+
+
+return fragColor;//ReturnUVAsColor(UV);
