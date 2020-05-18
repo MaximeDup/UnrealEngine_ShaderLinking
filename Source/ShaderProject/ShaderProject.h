@@ -8,7 +8,8 @@
 #include "ModuleManager.h"
 
 class FThisModuleAddsaVirtualShaderFolderModule
-	: public IModuleInterface
+/* only IModuleInterface necessary if not hosting gamemode in this module */
+	: public FDefaultGameModuleImpl 
 {
 public:
 	virtual void StartupModule() override;
